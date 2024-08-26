@@ -13,7 +13,14 @@ class TodoController extends Controller
      */
     public function index()
     {
-        return view("app");
+        $max_data = 5;
+
+        if (request("search")) {
+            $todos = Todo::where("task", "like", "%" . request("search") . "%")->paginate($max_data)->withQueryString();
+        } else {
+            $todos = Todo::orderBy("task", "asc")->paginate($max_data);
+        }
+        return view("app", compact("todos"));
     }
 
     /**
@@ -71,7 +78,26 @@ class TodoController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        try {
+            $request->validate([
+                "task" => "required|min:3|max:25"
+            ], [
+                "task.required" => "Task has been required",
+                "task.min" => "Task min 3 character",
+                "task.max" => "Task max 25 character",
+            ]);
+
+            $data = [
+                "task" => $request->input('task'),
+                "is_done" => $request->input("is_done"),
+            ];
+
+            Todo::where("id", $id)->update($data);
+
+            return redirect()->route("todo.index")->with("success", "Task has been updated successfully");
+        } catch (\Throwable $th) {
+            return redirect()->route("todo.index")->with("error", "Task has been failed to update");
+        }
     }
 
     /**
@@ -79,6 +105,11 @@ class TodoController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        try {
+            Todo::where("id", $id)->delete();
+            return redirect()->route("todo.index")->with("success", "Task has been deleted successfully");
+        } catch (\Throwable $th) {
+            return redirect()->route("todo.index")->with("error", "Task has been failed to delete");
+        }
     }
 }
